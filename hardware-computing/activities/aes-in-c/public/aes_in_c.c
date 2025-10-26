@@ -21,6 +21,10 @@ static inline void do_enc_block(__m128i *m, __m128i *k)
 static inline void do_dec_block(__m128i *m, __m128i *k)
 {
 	/* TODO: implement the decryption */
+	*m = _mm_xor_si128(*m, k[10]); // initial AddRoundKey
+	for(int i = 1; i < 10; i++)
+    	*m = _mm_aesdec_si128(*m, k[10 + i]);
+	*m = _mm_aesdeclast_si128(*m, k[0]);
 }
 
 #define AES_128_key_exp(k, rcon) aes_128_key_expansion(k, _mm_aeskeygenassist_si128(k, rcon))
@@ -38,7 +42,6 @@ static __m128i aes_128_key_expansion(__m128i key, __m128i keygened)
 static void aes128_load_key_enc_only(uint8_t *enc_key, __m128i *key_schedule)
 {
 	key_schedule[0] = _mm_loadu_si128((const __m128i*) enc_key);
-
 	key_schedule[1]  = AES_128_key_exp(key_schedule[0], 0x01);
 	key_schedule[2]  = AES_128_key_exp(key_schedule[1], 0x02);
 	key_schedule[3]  = AES_128_key_exp(key_schedule[2], 0x04);
@@ -79,6 +82,9 @@ static void aes128_enc(__m128i *key_schedule, uint8_t *plain_text, uint8_t *ciph
 static void aes128_dec(__m128i *key_schedule, uint8_t *cipher_text, uint8_t *plain_text)
 {
 	/* TODO: implement the decryption */
+	__m128i m = _mm_loadu_si128((__m128i *)cipher_text);
+	do_dec_block(&m, key_schedule);
+	_mm_storeu_si128((__m128i *)plain_text, m);
 }
 
 int main(void){
